@@ -1,0 +1,6 @@
+name = Notification SSE
+description = SSE notification for new orders
+
+core = 7.x
+
+files[] = notification_sse.module

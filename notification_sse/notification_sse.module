@@ -1,0 +1,82 @@
+<?php
+
+function notification_sse_menu(){
+    $items = array();
+
+    $items['new-orders'] = array(
+        'title' => 'New orders',
+        'page callback' => 'ajax_callback',
+        'access callback' => 'check_role',
+        'type' => MENU_CALLBACK
+    );
+
+    $items['notification'] = array(
+        'title' => 'Notification',
+        'page callback' => 'notification',
+        'access callback' => 'check_role',
+        'type' => MENU_CALLBACK
+    );
+
+    return $items;
+}
+
+function ajax_callback(){
+
+    try{
+        $orders = [];
+        $query = db_query("
+            SELECT created, order_number from {commerce_order}
+            WHERE status = :status
+            ORDER BY created", array(':status' => 'pending'))->fetchAll();
+
+        foreach($query as $key => $order){
+            $uid = $order->uid;
+            $username = user_load($uid)->name;
+            $orders[$key] = [
+                'order_number' => $order->order_number,
+                'created' => date('H:i, d.m', $order->created)
+            ];
+        }
+
+        $orders_json = json_encode($orders);
+        echo($orders_json);
+    }catch(Exception $e){
+        echo $e->getMessage(), "\n";
+    }
+}
+
+function notification(){
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header("Connection: keep-alive");
+
+    $timer = rand(0,100);
+    $name = "no-name";
+    $age = rand(0,100);
+    $arr = array('name' => $name, 'age' => $age);
+    $data = json_encode($arr);
+
+    if($timer > 30 && $timer < 90){
+        echo "data: {$data}\n\n";
+        flush();
+    }elseif($timer >= 90){
+        echo "data: break\n\n";
+        flush();
+    }else{
+        sleep(1);
+    }
+}
+
+function check_role(){
+    global $user;
+    $permission = false;
+
+    foreach($user->roles as $role){
+
+        if($role == 'operator'){
+            $permission = true;
+        }
+    }
+
+    return $permission;
+}
